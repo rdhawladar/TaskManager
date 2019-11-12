@@ -29,7 +29,7 @@ class Task extends Model
     //each category might have multiple children
     public function children()
     {
-        return $this->hasMany(static::class, 'parent_id')->orderBy('id');
+        return $this->hasMany(static::class, 'parent_id');
     }
     
     // all ascendants

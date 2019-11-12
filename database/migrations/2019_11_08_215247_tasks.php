@@ -20,6 +20,7 @@ class Tasks extends Migration
             $table->string('title');
             $table->integer('points');
             $table->integer('is_done');
+            $table->integer('edge_path');
             $table->timestamps();
             
 /*            $table->foreign('user_id')

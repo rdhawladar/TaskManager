@@ -74,9 +74,17 @@ class TaskService implements TaskServiceInterface
             dd($request);
         dd(array_search('parent_id', $request));*/
 
-
-        $parentIds = $this->tasksRepository->getParentIds($request);
-        dd($parentIds);
+/*         $a = 1245;
+        dump((int) ($a.'9'));
+        dd(array_map('intval', str_split(12345))); */
+        $parentsId = $this->tasksRepository->getParentsId(15);
+        //Need to check if pareId is equal to 5
+        //Need to check if is_done field is done or not done
+        $childsIdOfAllParent = [];
+        //Chceck if parents has any child with not done. If any parent has child with not done, returns false, Otherwise it will return true.
+        $isParentReadyToDone = $this->tasksRepository->checkIfParentReadyToDone($parentsId);
+        
+        dd($parentsId);
 
         $this->tasksRepository->updateStatus($request);
         if ($request->has('parent_id')) {

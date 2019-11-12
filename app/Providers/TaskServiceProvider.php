@@ -17,7 +17,7 @@ class TaskServiceProvider extends ServiceProvider
     {
         $this->app->bind(
             TaskRepositoryInterface::class, 
-            TaskRepository::class,
+            TaskRepository::class
         );
     }
 

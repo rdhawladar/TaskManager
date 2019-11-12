@@ -24,35 +24,62 @@ class TaskRepository implements TaskRepositoryInterface
         return false;
     }
 
-    public function getParentIds() {
-    	$isDone = false;
-    	$parent = Task::with('parentRecursive')->where('id', 16)->first()->toArray();
-    	$parentIds = [];
+    public function getParentsId($id) {
+    	$parent = Task::with('parentRecursive')->where('id', $id)->first()->toArray();
+    	$parentsId = [];
     	while (true) {
-    		array_push($parentIds, $parent['id']);
+    		array_push($parentsId, $parent['id']);
     		if (!isset($parent['parent_recursive'])) {
     			break;
     		}
     		$parent = $parent['parent_recursive'];
     	}
-    	return $parentIds;
+    	return $parentsId;
     }
 
+    public function isAllChildsDone($id) {
+        dump($id);
+        $child = Task::with('childrenRecursive')->where('id', 3)->first()->toArray();
+        
+        $childsId = [];
+    	while (true) {
+            dump($child);
+            dump(isset($child['children_recursive']));
+    		if (!isset($child['children_recursive'])) {
+                break;
+    		}
+            array_push($childsId, $child['id']);
+    		$child = $child['children_recursive'];
+        }
+        dd($childsId);
+    	return $childsId;
+    }
+
+    public function checkIfParentReadyToDone($parentsId) {
+        foreach ($parentsId as $key => $value) {
+            $isDone = $this->isAllChildsDOne($value);
+            dump($isDone);
+
+
+        }
+        dd('fomr child');
+
+    }
     public function updateStatus($data)
     {
     		// Task::whereIn('is_done', [0,1,2,3,4,5])->update(['is_done' => 1]);
     		// exit();
     	$isDone = false;
     	$parent = Task::with('parentRecursive')->where('id', 16)->first()->toArray();
-    	$parentIds = [];
+    	$parentsId = [];
     	while (true) {
-    		array_push($parentIds, $parent['id']);
+    		array_push($parentsId, $parent['id']);
     		if (!isset($parent['parent_recursive'])) {
     			break;
     		}
     		$parent = $parent['parent_recursive'];
     	}
-    	dd($parentIds);
+    	dd($parentsId);
 
     	dump($parent->toArray());
     	dd($parent::where('is_done', 1)->get()->toArray());
