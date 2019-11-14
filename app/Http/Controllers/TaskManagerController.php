@@ -40,7 +40,16 @@ class TaskManagerController extends Controller
                 );
     }
 
-    public function getUpdate(Request $request) {
-        dd('update');
+    public function getUpdate($id, Request $request) {
+        $response = $this->tasks->updateTask($request, $id);
+        return response()->json(
+                    [
+                        'data' => $response['data'],
+                        'message' => $response['message']
+                    ], 
+                    $response['status'],
+                    [],
+                    JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK
+                );
     }
 }

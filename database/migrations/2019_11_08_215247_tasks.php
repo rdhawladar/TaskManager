@@ -15,12 +15,12 @@ class Tasks extends Migration
     {
         Schema::create('tasks', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->integer('parent_id')->nullable()->unsigned();
-            $table->integer('user_id');
+            $table->string('parent_id')->nullable()->unsigned();
+            $table->string('user_id');
             $table->string('title');
             $table->integer('points');
             $table->integer('is_done');
-            $table->integer('edge_path');
+            $table->string('edge_path')->nullable();
             $table->timestamps();
             
 /*            $table->foreign('user_id')

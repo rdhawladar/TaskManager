@@ -2,6 +2,6 @@
 namespace App\Interfaces;
 
 interface TaskServiceInterface {
-    public function createTask($data);
-    public function editTask($data);
+    public function createTask($request);
+    public function updateTask($request, $id);
 }

@@ -17,6 +17,7 @@
 
 $router->group(['prefix' => 'api'], function () use ($router) {
     $router->get('create', ['uses' => 'TaskManagerController@getCreate']);
+    $router->get('update/{id}', ['uses' => 'TaskManagerController@getUpdate']);
     $router->post('task', ['uses' => 'TaskManagerController@getCreate']);
-    $router->post('update', ['uses' => 'TaskManagerController@getUpdate']);
+    $router->put('task/{id}', ['uses' => 'TaskManagerController@getUpdate']);
 });
