@@ -139,6 +139,7 @@ class TaskService implements TaskServiceInterface
         $isParentSame = $this->tasksRepository->isExists($request->only(['id', 'parent_id']));
 
         if (!$isParentSame) {
+            //Operation for the parent task to which the data will be assigned
             if (isset($data['parent_id'])) {
                 //Check if parent ID and ID is equal
                 if ($data['parent_id'] == $id) {
@@ -154,17 +155,19 @@ class TaskService implements TaskServiceInterface
                     $this->message = 'Depth is exceding! Please change parent ID.';            
                     return $this->getResponseData();
                 }
-                $this->tasksRepository->updateParents($parentsId, $data['points'], $data['is_done']);
-                
-            } else {
-
-            }
-                $currentParentsId = $this->tasksRepository->getParentsId($current['parent_id']);
-                dd($currentParentsId);
-                
                 $data['edge_path'] = implode('_', $parentsId);
-
-                dd($parentsId);
+                // $this->tasksRepository->updateParents($parentsId, $data['points'], $data['is_done']);
+                
+            }
+            if($current['parent_id']) {
+                $currentParentsId = $this->tasksRepository->getParentsId($current['parent_id']);
+                
+                //Check is done status for all current parents if is_done 0. If any parents are waiting for this leave to be is_done true, then make all parents is_done to 1.
+                if ($current['is_done']) {
+                    $this->tasksRepository->checkParentStatus($currentParentsId);
+                }
+                $this->tasksRepository->updateParents($currentParentsId, -$data['points']);
+            }
         }
         $result = $this->tasksRepository->update($data);
     }

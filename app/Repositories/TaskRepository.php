@@ -51,13 +51,25 @@ class TaskRepository implements TaskRepositoryInterface
         return $data;
     }
 
-    public function updateParents($ids, $points, $isDone) 
+    public function updateParents($ids, $points, $isDone = true) 
     {        
         $param = [];        
         if (!$isDone) {
             $param['is_done'] = $isDone;
         }
         return Task::whereIn('id', $ids)->increment('points', $points, $param);
+    }
+
+    public function checkParentStatus($ids) 
+    {
+        foreach ($ids as $id) {
+            $childs = $this->getChild($id)->children->toArray();
+            foreach ($childs as $child) {
+                if (!$child['is_done']) {
+                    return false;
+                }
+            }
+        }
     }
 
     public function updateTaskStatus($parentsId, $idDone)
