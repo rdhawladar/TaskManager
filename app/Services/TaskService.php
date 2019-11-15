@@ -50,11 +50,10 @@ class TaskService implements TaskServiceInterface
                     ]);
 
             //False if parent user does not match
-            if (!$isUserValid) {
+/*            if (!$isUserValid) {
                 $this->status = 400;
-                $this->message = 'Parent has different user ID. Please provide valid user data.';            
                 return false;
-            }
+            }*/
         }
 
         return true;
@@ -126,34 +125,46 @@ class TaskService implements TaskServiceInterface
         } */
         
         $childData = $this->tasksRepository->getChild($id);
-        dd($childData);
-        $currentParentId = $childData->parent_id;
 
         if ($childData->children->count() > 0) {
             $this->status = 500;
             $this->message = 'This is not leaf. Please update leaf with leaf ID.';
             return $this->getResponseData();            
         }
-        
+
+        $current['parent_id'] = $childData->parent_id;
+        $current['is_done'] = $childData->is_done;
+        $current['edge_path'] = $childData->edge_path;
+
         $isParentSame = $this->tasksRepository->isExists($request->only(['id', 'parent_id']));
 
         if (!$isParentSame) {
             if (isset($data['parent_id'])) {
+                //Check if parent ID and ID is equal
+                if ($data['parent_id'] == $id) {
+                    $this->status = 500;
+                    $this->message = 'Parent ID can not be same to ID';
+                    return $this->getResponseData();
+                }
                 $parentsId = $this->tasksRepository->getParentsId($data['parent_id']);
-    
+
                 //False if node exceeds depth of 5
                 if (!$parentsId) {
                     $this->status = 500;
                     $this->message = 'Depth is exceding! Please change parent ID.';            
                     return $this->getResponseData();
                 }
+                $this->tasksRepository->updateParents($parentsId, $data['points'], $data['is_done']);
                 
-                $data['edge_path'] = implode('_', $parentsId);
-                dd($parentsId);
-                // $this->tasksRepository->updateParents($parentsId, $data['points'], $data['is_done']);
             } else {
 
             }
+                $currentParentsId = $this->tasksRepository->getParentsId($current['parent_id']);
+                dd($currentParentsId);
+                
+                $data['edge_path'] = implode('_', $parentsId);
+
+                dd($parentsId);
         }
         $result = $this->tasksRepository->update($data);
     }

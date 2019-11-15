@@ -32,6 +32,7 @@ class TaskRepository implements TaskRepositoryInterface
 
     public function getParentsId($id)
     {
+        // $child = Task::where(['is_done' => 0])->update(['is_done' => 1]);
         $parentEdge = Task::find($id, 'edge_path')->edge_path;
         if ($parentEdge) {
             $parentsId = explode('_', $parentEdge);

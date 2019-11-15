@@ -15,17 +15,13 @@ class Tasks extends Migration
     {
         Schema::create('tasks', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('parent_id')->nullable()->unsigned();
+            $table->string('parent_id')->nullable();
             $table->string('user_id');
             $table->string('title');
             $table->integer('points');
             $table->integer('is_done');
             $table->string('edge_path')->nullable();
             $table->timestamps();
-            
-/*            $table->foreign('user_id')
-                  ->references('id')
-                  ->on('users');*/
         });
     }
 

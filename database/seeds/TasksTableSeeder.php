@@ -16,7 +16,7 @@ class TasksTableSeeder extends Seeder
         $points = [0,3,6,9];
         $task = [];
         for ($i = 1; $i <= 3; $i++) {
-            $task['user_id'] = rand(1,5);
+            $task['user_id'] = 1;
             $task['title'] = "Task_$i";
             $task['points'] = $points[$i];
             $task['is_done'] = 0;
@@ -28,7 +28,7 @@ class TasksTableSeeder extends Seeder
         for ($i = 1; $i <= 3; $i++) {
             for ($j=1; $j<=3; $j++) {
                 $task['parent_id'] = $i;
-                $task['user_id'] = rand(1,5);
+                $task['user_id'] = 1;
                 $task['title'] = "Task_".$i."_$j";
                 $task['points'] = $points[$i]/3;
                 $task['is_done'] = 0;
@@ -39,7 +39,7 @@ class TasksTableSeeder extends Seeder
         $i = 1;
         for ($j=1; $j<=3; $j++) {
             $task['parent_id'] = 4;
-            $task['user_id'] = rand(1,5);
+            $task['user_id'] = 1;
             $task['title'] = "Task_".$i."_1_$j";
             $task['points'] = 1;
             $task['is_done'] = 0;
