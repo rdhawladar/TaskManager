@@ -4,13 +4,14 @@ namespace App\Repositories;
 use App\Interfaces\TaskRepositoryInterface;
 use App\Models\Task;
 use Illuminate\Database\QueryException;
+use DB;
 
 class TaskRepository implements TaskRepositoryInterface
 {
 
-    public function getUserData()
+    public static function getUserData()
     {
-        $result = json_decode(file_get_contents('https://gitlab.iterato.lt/snippets/3/raw'), true);
+        $result = json_decode(file_get_contents(config('constants.user_api')), true);
         return $result['data'];
     }
 
@@ -32,11 +33,10 @@ class TaskRepository implements TaskRepositoryInterface
 
     public function getParentsId($id)
     {
-        // $child = Task::where(['is_done' => 0])->update(['is_done' => 1]);
         $parentEdge = Task::find($id, 'edge_path')->edge_path;
         if ($parentEdge) {
             $parentsId = explode('_', $parentEdge);
-            if (count($parentsId) >= 5) {
+            if (count($parentsId) >= config('constants.depth')) {
                 return false;
             }
             array_push($parentsId, $id);
@@ -51,119 +51,132 @@ class TaskRepository implements TaskRepositoryInterface
         return $data;
     }
 
-    public function updateParents($ids, $points, $isDone = true) 
-    {        
-        $param = [];        
-        if (!$isDone) {
-            $param['is_done'] = $isDone;
-        }
-        return Task::whereIn('id', $ids)->increment('points', $points, $param);
-    }
-
-    public function checkParentStatus($ids) 
+    public function updateParents($ids, $points, $params = [])
     {
-        foreach ($ids as $id) {
-            $childs = $this->getChild($id)->children->toArray();
-            foreach ($childs as $child) {
-                if (!$child['is_done']) {
-                    return false;
-                }
-            }
-        }
+        return Task::whereIn('id', $ids)->increment('points', $points, $params);
     }
 
-    public function updateTaskStatus($parentsId, $idDone)
+    public function checkParentsAreNotDone($ids, $id, $isDone = 0)
     {
-        /* if ($is_done) {
-            return null;
-        } */
+    	array_push($ids, $id);
+    	return Task::where('edge_path', 'like', $ids[config('constants.numbers.zero')].'_%')
+    		->whereNotIn('id', $ids)
+    		->where('is_done', 	$isDone)
+			->exists();
     }
 
-    /* public function isAllChildsDone($id) {
-        dump($id);
-        $child = Task::with('childrenRecursive')->where('id', 3)->first()->toArray();
-        
-        $childsId = [];
-    	while (true) {
-            dump($child);
-            dump(isset($child['children_recursive']));
-    		if (!isset($child['children_recursive'])) {
-                break;
+    public function getUserName($id) {
+    	foreach ($this->getUserData() as $user) {
+    		if ($id == $user['id']) {
+    			return $user['first_name']." ".$user['last_name'];
     		}
-            array_push($childsId, $child['id']);
-    		$child = $child['children_recursive'];
-        }
-        dd($childsId);
-    	return $childsId;
-    } */
-
-    /* public function checkIfParentReadyToDone($parentsId) {
-        foreach ($parentsId as $key => $value) {
-            $isDone = $this->isAllChildsDOne($value);
-            dump($isDone);
-
-
-        }
-        dd('fomr child');
-
-    } */
-    /* public function updateStatus($data)
-    {
-    		// Task::whereIn('is_done', [0,1,2,3,4,5])->update(['is_done' => 1]);
-    		// exit();
-    	$isDone = false;
-    	$parent = Task::with('parentRecursive')->where('id', 16)->first()->toArray();
-    	$parentsId = [];
-    	while (true) {
-    		array_push($parentsId, $parent['id']);
-    		if (!isset($parent['parent_recursive'])) {
-    			break;
-    		}
-    		$parent = $parent['parent_recursive'];
     	}
-    	dd($parentsId);
 
-    	dump($parent->toArray());
-    	dd($parent::where('is_done', 1)->get()->toArray());
-    	$lastParent = false;
-    		if ($isDone) {
-    			dump($parent->parent->toArray());
-    			dd($parent->toArray());
-    			$parent->is_done;
+    }
 
+public function doOutputList($TreeArray, $deep=0)
+{
+    $padding = str_repeat('  ', $deep*3);
 
-    		} else {
-    			while (true) {
-    				dump($parent->toArray());
-    				($parent->parent) ?
-    					$params = [$parent->id, $parent->parent->id] :
-    					$params = $parent->id;
-    				Task::where('id', $params)->update(['is_done' => 0]);
-    				if (!$parent->parent_id) {
-    					break;
+    echo $padding . "<ul>\n";
+    foreach($TreeArray as $key => $arr)
+    {
+        if(is_array($arr)) 
+        {
+                $this->doOutputList($arr, $deep+1);
+        }
+        else
+        {
+        	if ($key == 'edge_path') {
+
+        		echo $padding . "  <li>\n";
+                echo $padding .'  edge_path:  '. $TreeArray['edge_path'];
+		        echo $padding . "  </li>\n";
+        	}
+        }
+    }
+    echo $padding . "</ul>\n";
+}
+    public function get()
+    {
+
+    	$parent = Task::with('childrenRecursive')->whereNull('parent_id')->get()->toArray();
+
+    	// dd($parent);
+
+		$this->doOutputList($parent);
+		exit();
+
+    	$it = new \RecursiveIteratorIterator( new \RecursiveArrayIterator($parent));
+
+    	foreach ($it as $key => $val) {
+    		dump($key . ":" . $val);
+		}
+    	dd($it);
+
+    	foreach ($parent as $childrens) {
+    		echo "<br>edge_path: ".$childrens['edge_path']."<br>";
+    		dump(count($parent));
+    		dump($parent);
+    		$parent = $childrens['children_recursive'];
+    		foreach ($parent as $childrens) {
+    				echo "<br>*** edge_path: ".$childrens['edge_path']." "."<br>";
+    				dump(count($parent));
+    				dump($parent);
+    				$parent = $childrens['children_recursive'];
+    				foreach ($parent as $childrens) {
+    					echo "<br>****** edge_path: ".$childrens['edge_path']." "."<br>";
+    					dump(count($parent));
+    					dump($parent);
+    					$parent = $childrens['children_recursive'];
+	    				foreach ($parent as $childrens) {
+	    					echo "<br>********* edge_path: ".$childrens['edge_path']." "."<br>";
+	    					dump(count($parent));
+	    					dump($parent);
+	    					$parent = $childrens['children_recursive'];
+		    				foreach ($parent as $childrens) {
+		    					echo "<br>************ edge_path: ".$childrens['edge_path']." "."<br>";
+		    					dump(count($parent));
+		    					dump($parent);
+		    					$parent = $childrens['children_recursive'];
+			    				foreach ($parent as $childrens) {
+			    					echo "<br>************ edge_path: ".$childrens['edge_path']." "."<br>";
+			    					dump(count($parent));
+			    					dump($parent);
+			    					$parent = $childrens['children_recursive'];
+			    				}
+		    				}
+	    				}
     				}
-    				$parent = Task::with('parent')->where('id', $parent->parent_id)->first();
-    				# code...
-    			}
-    			exit();
-    			dump($parent);
-    			dd($parent->toArray());
-
-
     		}
-    	// while ($parent) {
-    	// }
-    	dd($parent);
+    	}
+    	exit();
+    	$parent = $parent[0]->toArray();
+    	while (true) {
+    		if(!isset($parent['children_recursive']))
+    			break;
+    		echo "<br>:".$parent['edge_path'].":<br>";
+    		$parent = $parent['children_recursive'];
+    		foreach ($parent as $children) {
+    			dump($children);
+    		}
 
-        // dd($data['parent_id']);
-        $id = $data['parent_id'];
-		// $surveys = Task::with('childrenRecursive')->whereNull('parent_id')->get();
-        // $surveys = Task::with('childrenRecursive')->where('parent_id', 3)->get();
-        $surveys = Task::with('parentRecursive')->where('id', 16)->get();
-        dd(collect($surveys->toArray()));
-        $data = Task::with('children')->where('parent_id', 3)->get();
-        dump($data->toArray());
-        $ProjectTree = Task::where('id', 3)->with([
+
+    		# code...
+    	}
+
+
+    	$data = Task::with('children')->whereNull('parent_id')->get()->toArray();
+    	dd($data);
+    	$data = Task::where('edge_path', 'like', '1_%')->orderBy('parent_id', 'asc')->get();
+
+    	dump($data->where('id', 13)->toArray());
+    	dd($data->toArray());
+
+    	$tasks = Task::with('childrenRecursive')->where('id', 1)->get()->toArray();
+    	// $tasks = Task::with('parentRecursive')->where('id', 16)->get()->toArray();
+
+    	    $ProjectTree = Task::where('id', 3)->with([
             'children' => function ($query) {
                 $query->with([
                     'children' => function ($query) {
@@ -172,24 +185,24 @@ class TaskRepository implements TaskRepositoryInterface
                         }]);
                     }]);
             }])->select(['id'])->get();
-        dd($ProjectTree->toArray());
+    	dd($tasks);
+    	foreach ($tasks as $key => $parent) {
+    		if($key > 0)
+    			break;
+    		echo "<br>user: .".$parent['user_id']." : ".$this->getUserName($parent['user_id'])."<br>";
+    		dump($parent);
+    		while (true) {
+    			if (!isset($parent['children_recursive'])) {
+    				break;
+    			}
 
-        dd('from update');
-    } */
-
-    public function get($id = null, $parentId = null, $userId = null)
-    {
-        $param = [];
-        if ($id) {
-            $param['id'] = $id;
-        }
-        if ($parentId) {
-            $param['parent_id'] = $parentId;
-        }
-        if($userId) {
-            $param['user_id'] =$userId;
-        }
-        dd($param);
+    			echo "<br>*".$parent['title']." <br>";
+    			$parent = $parent['children_recursive'];
+    			dump($parent);
+    			// dump($parent['title']);
+    		}
+    	}
+    	dd('from ');
 
     }
 
@@ -203,8 +216,14 @@ class TaskRepository implements TaskRepositoryInterface
         return $result;
     }
 
-    public function update($data)
+    public function update($id, $data)
     {
-        dd('update repo');
+        try {
+        	$result = DB::table('tasks')->where('id', $id)->update($data);
+        	$result = DB::table('tasks')->select('id', 'parent_id', 'user_id', 'title', 'points', 'created_at', 'updated_at')->where('id', $id)->first();
+        } catch (QueryException $e) {
+            $result = false;
+        }
+        return $result;
     }
 }

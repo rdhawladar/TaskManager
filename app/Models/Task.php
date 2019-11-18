@@ -16,33 +16,31 @@ class Task extends Model
         'parent_id', 'user_id', 'title', 'points', 'is_done', 'edge_path'
     ];
 
-    /**
-     * The attributes excluded from the model's JSON form.
-     *
-     * @var array
-     */
+    #each subtask belong to a parent
     public function parent()
     {
-        return $this->belongsTo(static::class, 'parent_id');
+        return $this->belongsToOne(static::class, 'parent_id');
     }
 
-    //each category might have multiple children
+    #each tasks might have multiple subtasks/children
     public function children()
     {
         return $this->hasMany(static::class, 'parent_id');
     }
     
-    // all ascendants
+    # recursive, all ascendants
     public function parentRecursive()
     {
         return $this->parent()->with('parentRecursive');
     }
 
-    // recursive, loads all descendants
+    # recursive, loads all descendants
     public function childrenRecursive()
     {
         return $this->children()->with('childrenRecursive');
-        // which is equivalent to:
-        // return $this->hasMany('Survey', 'parent')->with('childrenRecursive);
+    }
+
+    public function replies(){
+        return $this->children(static::class, 'is_done')->where('is_done', 1);
     }
 }

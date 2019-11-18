@@ -13,8 +13,8 @@ class TaskService implements TaskServiceInterface
     public function __construct(TaskRepositoryInterface $tasksRepository)
     {
         $this->tasksRepository = $tasksRepository;
-        $this->status = 201;
-        $this->message = 'Request successful!';
+        $this->status = config('constants.status.created');
+        $this->message = config('constants.messages.success');
         $this->data = '';
     }
 
@@ -30,7 +30,7 @@ class TaskService implements TaskServiceInterface
         ]);
 
         if (!$validtion->passes()) {
-            $this->status = 400;
+            $this->status = config('constants.status.bad_request');
             $this->message = $validtion->errors()->all();
             return false;
         }
@@ -38,8 +38,8 @@ class TaskService implements TaskServiceInterface
         $isUserExist = $this->tasksRepository->isUserExist($data['user_id']);
         
         if (!$isUserExist) {
-            $this->status = 400;
-            $this->message = 'Failed! User ID is not valid.';
+            $this->status = config('constants.status.bad_request');
+            $this->message = config('constants.messages.invalid_user_id');
             return false;
         }
 
@@ -50,10 +50,10 @@ class TaskService implements TaskServiceInterface
                     ]);
 
             //False if parent user does not match
-/*            if (!$isUserValid) {
-                $this->status = 400;
+            if (!$isUserValid) {
+                $this->status = config('constants.status.bad_request');
                 return false;
-            }*/
+            }
         }
 
         return true;
@@ -72,40 +72,39 @@ class TaskService implements TaskServiceInterface
         return $this->tasksRepository->getUserData();
     }
 
-    public function getTask() 
+    public function getTaskData() 
     {
         $task = $this->tasksRepository->get();
     }
     
     public function createTask($request)
     {
-        $request->has('parent_id') && !$request->input('parent_id') ?
-            $data = $request->except('parent_id') :
-            $data = $request->input();
-        
-        if (!$this->isValid($data)) {
+        if (!$this->isValid($request->all())) {
             return $this->getResponseData();
         }
     
-        if (isset($data['parent_id'])) {
-            $parentsId = $this->tasksRepository->getParentsId($data['parent_id']);
+        if ($request->parent_id) {
+            $parentsId = $this->tasksRepository->getParentsId($request->parent_id);
 
             //False if node exceeds depth of 5
             if (!$parentsId) {
-                $this->status = 500;
-                $this->message = 'Depth is exceding! Please change parent ID.';            
+                $this->status = config('constants.status.server_error');
+                $this->message =  config('constants.messages.invalid_depth');
                 return $this->getResponseData();
             }
 
-            $data['edge_path'] = implode('_', $parentsId);
-            $this->tasksRepository->updateParents($parentsId, $data['points'], $data['is_done']);
+            $request->request->add(['edge_path' => implode('_', $parentsId)]);
+            $request->is_done ?
+                $param = [] :
+                $param = $request->only('is_done');
+            $this->tasksRepository->updateParents($parentsId, $request->points, $param);
         }
 
-        $result = $this->tasksRepository->insert($data);
+        $result = $this->tasksRepository->insert($request->all());
 
         if (!$result) {
-            $this->status = 500;
-            $this->message = 'Unexpected Error!';
+            $this->status = config('constants.status.server_error');
+            $this->message = config('constants.messages.undefined_error');
         }
 
         unset($result['edge_path']);
@@ -120,55 +119,82 @@ class TaskService implements TaskServiceInterface
             $data = $request->except('parent_id') :
             $data = $request->input();
         
-        /*if (!$this->isValid($data)) {
+        if (!$this->isValid($data)) {
             return $this->getResponseData();
-        } */
+        } 
         
         $childData = $this->tasksRepository->getChild($id);
 
-        if ($childData->children->count() > 0) {
-            $this->status = 500;
-            $this->message = 'This is not leaf. Please update leaf with leaf ID.';
+        if ($childData->children->count() > config('constants.numbers.zero')) {
+            $this->status = config('constants.status.server_error');
+            $this->message = config('constants.messages.invalid_leaf');
             return $this->getResponseData();            
         }
 
         $current['parent_id'] = $childData->parent_id;
         $current['is_done'] = $childData->is_done;
+        $current['points'] = $childData->points;
         $current['edge_path'] = $childData->edge_path;
 
         $isParentSame = $this->tasksRepository->isExists($request->only(['id', 'parent_id']));
 
-        if (!$isParentSame) {
-            //Operation for the parent task to which the data will be assigned
-            if (isset($data['parent_id'])) {
-                //Check if parent ID and ID is equal
-                if ($data['parent_id'] == $id) {
-                    $this->status = 500;
-                    $this->message = 'Parent ID can not be same to ID';
-                    return $this->getResponseData();
-                }
-                $parentsId = $this->tasksRepository->getParentsId($data['parent_id']);
+        if ($request->parent_id) {
+            #Check if parent ID and ID is equal
+            if ($data['parent_id'] == $id) {
+                $this->status = config('constants.status.server_error');
+                $this->message = config('constants.messages.parent_conflict');
+                return $this->getResponseData();
+            }
+            $parentsId = $this->tasksRepository->getParentsId($request->parent_id);
 
-                //False if node exceeds depth of 5
-                if (!$parentsId) {
-                    $this->status = 500;
-                    $this->message = 'Depth is exceding! Please change parent ID.';            
-                    return $this->getResponseData();
-                }
-                $data['edge_path'] = implode('_', $parentsId);
-                // $this->tasksRepository->updateParents($parentsId, $data['points'], $data['is_done']);
-                
+            #False if node exceeds depth of 5
+            if (!$parentsId) {
+                $this->status = config('constants.status.server_error');
+                $this->message = config('constants.messages.invalid_depth');            
+                return $this->getResponseData();
             }
-            if($current['parent_id']) {
-                $currentParentsId = $this->tasksRepository->getParentsId($current['parent_id']);
-                
-                //Check is done status for all current parents if is_done 0. If any parents are waiting for this leave to be is_done true, then make all parents is_done to 1.
-                if ($current['is_done']) {
-                    $this->tasksRepository->checkParentStatus($currentParentsId);
+
+            $request->request->add(['edge_path' => implode('_', $parentsId)]);
+            $request->is_done ?
+                $param = [] :
+                $param = $request->only('is_done');
+            $points = $request->points;
+
+            if ($isParentSame) {
+                $points = $points - $current['points'];
+                if ($request->is_done 
+                    && !$this->tasksRepository->checkParentsAreNotDone($parentsId, $id)) {
+                    $param = ['is_done' => config('constants.numbers.one')];
                 }
-                $this->tasksRepository->updateParents($currentParentsId, -$data['points']);
             }
+
+            $this->tasksRepository->updateParents($parentsId, $points, $param);
         }
-        $result = $this->tasksRepository->update($data);
+
+        #Operations to the current parents to adjust point and status.
+        if (!$isParentSame && $current['parent_id']) {
+            $currentParentsId = $this->tasksRepository->getParentsId($current['parent_id']);
+            
+            /**
+             * Check is_done status for all current parents. check when is_done 0
+             * If any parents are waiting for, this leave to be is_done true,
+             * then make all parents is_done to 1.
+             */
+            $param = [];
+            if (!$current['is_done'] 
+                && !$this->tasksRepository->checkParentsAreNotDone($currentParentsId, $id)) {
+                $param = ['is_done' => config('constants.numbers.one')];
+            }
+            $this->tasksRepository->updateParents($currentParentsId, -$request->points, $param);
+        }
+        $result = $this->tasksRepository->update($id, $request->except('id', 'email'));
+
+        if (!$result) {
+            $this->status = config('constants.status.server_error');
+            $this->message = config('constants.messages.undefined_error');
+        }
+
+        $this->data = $result;
+        return $this->getResponseData();
     }
 }

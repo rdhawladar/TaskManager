@@ -25,6 +25,10 @@ class TaskManagerController extends Controller
         $this->tasks = $tasks;
     }
 
+    public function getTasks(Request $request)
+    {
+        $this->tasks->getTaskData($request);   
+    }
 
     public function getCreate(Request $request)
     {

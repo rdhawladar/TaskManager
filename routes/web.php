@@ -10,14 +10,15 @@
 | and give it the Closure to call when that URI is requested.
 |
  */
+use App\Models\Task;
 
-/*$router->get('/', function () use ($router) {
-    return view('taskboard', ['name' => 'Riad']);
-});*/
+// $router->get('/', ['uses' => 'TaskManagerController@getTasks']);
+
+$router->get('/', function () {
+    return view('taskboard');
+});
 
 $router->group(['prefix' => 'api'], function () use ($router) {
-    $router->get('create', ['uses' => 'TaskManagerController@getCreate']);
-    $router->get('update/{id}', ['uses' => 'TaskManagerController@getUpdate']);
     $router->post('task', ['uses' => 'TaskManagerController@getCreate']);
     $router->put('task/{id}', ['uses' => 'TaskManagerController@getUpdate']);
 });
